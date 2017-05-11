@@ -1,0 +1,134 @@
+<project name="HW3Web" default="worker" basedir="./">
+
+        <property name="web-inf.lib.dir" location="${basedir}${file.separator}target${file.separator}WEB-INF${file.separator}lib"/>	
+	
+        <path id="classpath">
+                <fileset dir="${web-inf.lib.dir}" includes="**/*.jar"/>
+                <fileset dir="target/master/WEB-INF/classes"/>
+                <fileset dir="target/worker/WEB-INF/classes"/>
+                <fileset dir="classes"/>
+        </path>
+
+        <target name="init">
+                <mkdir dir="${web-inf.lib.dir}"/>
+                <mkdir dir="target/master/WEB-INF/classes"/>
+                <mkdir dir="target/worker/WEB-INF/classes"/>
+                <mkdir dir="classes"/>
+        </target>
+        <target name="compile-jobs" depends="init">
+                <javac srcdir="src" destdir="classes"  deprecation="on"
+     debug="true" includeantruntime="false" classpath="classes">
+                        <compilerarg value="-Xlint"/>
+                        <classpath>
+                                <fileset dir="${basedir}${file.separator}lib">
+                                        <include name="*.jar"/>
+                                </fileset>
+                        </classpath>
+                </javac>
+        </target>
+
+        <target name="compile-master" depends="init">
+                <javac srcdir="src" destdir="target/master/WEB-INF/classes" includes="**/master/*.java" deprecation="on"
+     debug="true" includeantruntime="false" classpath="lib/servlet-api.jar">
+                        <compilerarg value="-Xlint"/>
+                        <classpath>
+                                <fileset dir="${basedir}${file.separator}lib">
+                                        <include name="*.jar"/>
+                                </fileset>
+                        </classpath>
+                </javac>
+        </target>
+
+        <target name="compile-worker" depends="init">
+                <javac srcdir="src" destdir="target/worker/WEB-INF/classes" includes="**/worker/*.java" deprecation="on"
+     debug="true" includeantruntime="false" classpath="lib/servlet-api.jar">
+                        <compilerarg value="-Xlint"/>
+                        <classpath>
+                                <fileset dir="${basedir}${file.separator}lib">
+                                        <include name="*.jar"/>
+                                </fileset>
+                        </classpath>
+                </javac>
+        </target>
+
+
+
+        <target name="war-master" depends="compile-master">
+                <jar destfile="master.war">
+                        <fileset dir="target/master/" includes="WEB-INF/classes/**/*.class"/>
+                        <fileset dir="target/master/" includes="WEB-INF/lib/*.jar"/>
+                        <fileset dir="target/master/" includes="WEB-INF/*.xml"/>
+                </jar>
+        </target>
+
+        <target name="war-worker" depends="compile-worker">
+                <jar destfile="worker.war">
+                        <fileset dir="target/worker/" includes="WEB-INF/classes/**/*.class"/>
+                        <fileset dir="target/worker/" includes="WEB-INF/lib/*.jar"/>
+                        <fileset dir="target/worker/" includes="WEB-INF/*.xml"/>
+                </jar>
+        </target>
+
+	
+	
+	
+	
+        <target name="worker" depends="build">
+                <parallel>
+                        <java classname="edu.upenn.cis455.mapreduce.worker.WorkerStatusUpdater" fork="true">
+                                <classpath>
+                                        <path refid="classpath"/>
+                                </classpath>
+
+                                <arg value="127.0.0.1:8000"/>
+                                <arg value="node1/"/>
+                                <arg value="8001"/>
+
+                        </java>
+                </parallel>
+        </target>
+	
+    <target name="build" depends="war-master,war-worker,compile-jobs">
+            <copy todir="${web-inf.lib.dir}" overwrite="true">
+                    <fileset dir="${basedir}${file.separator}lib">
+                            <include name="*.jar"/>
+                    </fileset>
+            </copy>
+            <jar destfile="${web-inf.lib.dir}${file.separator}master.jar" update="true">
+                    <fileset dir="${web-inf.lib.dir}" includes="**/*.jar" excludes="**/worker.jar, **/master.jar"/>
+                    <fileset dir="target/master/WEB-INF/classes"/>
+                    <fileset dir="target/worker/WEB-INF/classes"/>
+                    <fileset dir="classes"/>
+                    <manifest>
+                            <attribute name="Main-Class" value="${master}"/>
+                    </manifest>
+            </jar>
+            <jar destfile="${web-inf.lib.dir}${file.separator}worker.jar" update="true">
+
+                    <fileset dir="${web-inf.lib.dir}" includes="**/*.jar" excludes="**/worker.jar, **/master.jar"/>
+                    <fileset dir="target/master/WEB-INF/classes"/>
+                    <fileset dir="target/worker/WEB-INF/classes"/>
+                    <fileset dir="classes"/>
+
+                    <manifest>
+                            <attribute name="Main-Class" value="edu.upenn.cis455.mapreduce.worker.WorkerStatusUpdater"/>
+                    </manifest>
+            </jar>
+    </target>
+
+        <target name="pack" description="Create an archive for submission">
+                <zip destfile="submit-hw3.zip">
+                        <zipfileset dir="." excludes="target/**,**/*.class,submit-hw3.zip,master.war,worker*.war"/>
+                </zip>
+        </target>
+
+        <target name="clean">
+                <delete dir="target/master/WEB-INF/classes"/>
+                <delete dir="target/worker/WEB-INF/classes"/>
+                <delete dir="classes"/>
+                <delete dir="${web-inf.lib.dir}"/>
+                <delete file="master.war"/>
+                <delete file="worker.war"/>
+        </target>
+
+</project>
